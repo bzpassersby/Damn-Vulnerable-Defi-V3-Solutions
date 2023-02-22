@@ -15,7 +15,7 @@
 <br />
 <div align="center">
   <a href="https://damnvulnerabledefi.xyz">
-    <img src="./cover.png" alt="Logo" width="80" height="80">
+    <img src="./cover.png" alt="Logo" width="200" height="80">
   </a>
 
 <h3 align="center">Damn Vulnerable Defi V3 Solutions</h3>
