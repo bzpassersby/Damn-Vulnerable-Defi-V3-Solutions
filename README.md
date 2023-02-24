@@ -34,32 +34,31 @@ Most challenges requires attacker contracts in the contracts folder and the exec
 </div>
 
 <!-- TABLE OF CONTENTS -->
-<details>
+
   <summary>Table of Contents</summary>
   <ol>
     <li>
-      <a href="#unstoppable">Unstoppable</a>
+      <a href="#1-unstoppable">Unstoppable</a>
     </li>
     <li>
-      <a href="#naive-receiver">Naive receiver</a>
+      <a href="#2-naive-receiver">Naive receiver</a>
     </li>
-    <li><a href="#truster">Truster</a></li>
-    <li><a href="#side-entrance">Side Entrance</a></li>
-    <li><a href="#the-rewarder">The Rewarder</a></li>
-    <li><a href="#selfie">Selfie</a></li>
-    <li><a href="#compromised">Compromised</a></li>
-    <li><a href="#puppet">Puppet</a></li>
-    <li><a href="#puppet-v2">Puppet V2</a></li>
-    <li><a href="#free-rider">Free Rider</a></li>
-    <li><a href="#backdoor">Backdoor</a></li>
-    <li><a href="#climber">Climber</a></li>
-    <li><a href="#wallet-mining">Wallet Mining</a></li>
-    <li><a href="#puppet-v3">Puppet V3</a></li>
-    <li><a href="#abi-smuggling">ABI Smuggling</a></li>
+    <li><a href="#3-truster">Truster</a></li>
+    <li><a href="#4-side-entrance">Side Entrance</a></li>
+    <li><a href="#5-the-rewarder">The Rewarder</a></li>
+    <li><a href="#6-selfie">Selfie</a></li>
+    <li><a href="#7-compromised">Compromised</a></li>
+    <li><a href="#8-puppet">Puppet</a></li>
+    <li><a href="#9-puppet-v2">Puppet V2</a></li>
+    <li><a href="#10-free-rider">Free Rider</a></li>
+    <li><a href="#11-backdoor">Backdoor</a></li>
+    <li><a href="#12-climber">Climber</a></li>
+    <li><a href="#13-wallet-mining">Wallet Mining</a></li>
+    <li><a href="#14-puppet-v3">Puppet V3</a></li>
+    <li><a href="#15-abi-smuggling">ABI Smuggling</a></li>
   </ol>
-</details>
 
-## Unstoppable
+## 1-Unstoppable
 
 The goal of the first challenge is to perform a DOS (Denial of Service) attack to the contract.
 
@@ -86,7 +85,7 @@ The attack is to create a conflict between the two accounting systems by manuall
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Naive Receiver
+## 2-Naive Receiver
 
 This challenge require us to drain all the funds from a flash loan receiver contract in a single transaction.
 
@@ -98,7 +97,7 @@ In order to achieve the attack in a single transaction, we need to deploy an att
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Truster
+## 3-Truster
 
 Starting with 0 balance, we are tasked to take all tokens from the flash loan pool.
 
@@ -114,7 +113,7 @@ We can exploit by passing '0' amount flashLoan with data for the lending pool to
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Side Entrance
+## 4-Side Entrance
 
 The challenge start with a flash loan pool with 1000ETH and we need to drain the pool.
 
@@ -126,7 +125,7 @@ To exploit, we simply need to take all tokens from the pool and call the `deposi
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## The Rewarder
+## 5-The Rewarder
 
 Here we are tasked to claim rewards from a yield farming pool with zero token to start.
 
@@ -198,7 +197,7 @@ The attack would be to set the time at the beginning at a new round, and execute
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Selfie
+## 6-Selfie
 
 Starting with a flash loan pool and a governance contract that manage the pool, we need to drain the funds from the pool.
 
@@ -218,7 +217,7 @@ Note that the delayed execution is a good practice that in reality would allow r
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Compromised
+## 7-Compromised
 
 The challenge is to manipulate NFT prices to drain all funds from an NFT exchange.
 
@@ -252,7 +251,7 @@ We can verify that these are private keys to the trusted accounts of the oracle.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Puppet
+## 8-Puppet
 
 The challenge is to drain all the tokens from the lender pool in a single transaction.
 
@@ -268,11 +267,11 @@ Finally, we need to deploy our attacker contract to swap token and borrow tokens
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Puppet-v2
+## 9-Puppet-v2
 
 The challenge is similar to Puppet. Instead we need to manipulate the oracle price pulled from Uniswap v2 liquidity pool.
 
-Uniswap v2 added improvements to prevent price oracle attacks. One is it measures prices at every beginning of a block, increasing the possibility for the attacker to lose money to arbitrageurs. Second, it introduces TWAP (time-weighted average price), which allows oracles to survey average price as a specific time intervals.
+Uniswap v2 added improvements to prevent price oracle attacks. One is it measures prices at the beginning of every block, increasing the possibility for the attacker to lose money to arbitrageurs. Second, it introduces TWAP (time-weighted average price), which allows oracles to survey average price as a specific time intervals.
 
 The main vulnerability in the puppet lending pool is that the TWAP is not implemented, instead it directly query the spot price of the liquidity pool.
 
@@ -280,7 +279,7 @@ The main vulnerability in the puppet lending pool is that the TWAP is not implem
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Free Rider
+## 10-Free Rider
 
 We are tasked to get the NFTs from a marketplace and send it to a designated recovery contract.
 
@@ -294,7 +293,7 @@ The attack would be get a flash loan from Uniswap to buy NFTs, and return it in 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Back Door
+## 11-Back Door
 
 Here we are tasked to deploy Gnosis wallet contract on behalf of 5 existing registered users in the WalletRegistry and take all the rewards that the registry sends to the user owned wallets.
 
@@ -304,7 +303,7 @@ Several safe guards are checked in the `proxyCreated` function, including making
 
 After reviewing the `initializer` data which was passed during wallet creation to initialize the wallet through invoking `setup` function on GnosisSafe.sol, we can see that of all the arguments passed to `setup`, only `address to`,`bytes calldata data`, `paymentToken`,`payment`,`paymentReceiver` can be customized while still passing the checks from the registry.
 
-````solidiy
+```solidiy
 function setup(
         address[] calldata _owners,
         uint256 _threshold,
@@ -327,8 +326,8 @@ function setup(
         }
         emit SafeSetup(msg.sender, _owners, _threshold, to, fallbackHandler);
     }
-    ```
-````
+
+```
 
 Note that even though we are free to set the `paymentReceiver` and `payment` argument to directly send token to us at initialization, the wallet has not received token rewards at this point to send.
 
@@ -352,7 +351,7 @@ In order to exploit this, our malicious logic contract(FakeMaster.sol) modifies 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Climber
+## 12-Climber
 
 The challenge is to drain the funds in the vault administered by a Timelock contract. And the vault itself is UUPS upgradable.
 
@@ -372,7 +371,7 @@ After our attacker contract(ClimberAttack.sol) reset the delay and got the propo
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Wallet Mining
+## 13-Wallet Mining
 
 There are several small challenges combined. We are tasked to drain all funds from a wallet deployer contract which only issues rewards to specific users with pre-calculated wallet address registered in an authorizer contract. The authorizer contract is upgradable. On the other hand, we need to deploy contracts to three empty addresses, two of the addresses are referenced in the wallet deployer contract. The third address has funds that we need to recover.
 
@@ -450,12 +449,25 @@ Another potential point of exploit in the wallet deployer contract is `can` func
     }
 ```
 
-(2) The logic contract inherit `upgradeToAndCall` function, even restricted to owner, but if owner was compromised, it makes a `delegatecall` under the hood to the new logic contract. This is a red flag that would allow anyone who gains control of the logic contract to change its state.
+(2) The logic contract inherit `upgradeToAndCall` function, which is restricted to owner, but if owner was compromised, it makes a `delegatecall` under the hood to the new logic contract. This is a red flag that would allow anyone who gains control of the logic contract to change its state.
 
 In order to exploit, we need to first initialize the logic contract to claim ownership. Second, we need to upgrade it to a malicious logic contract and call `selfdestruct`. Now we can empty the authorizer logic contract attached to its proxy.
 
 If we execute our attack as above, we should be able to pass the `drop` function to receive tokens.
 
+```solidity
+    function upgradeToAndCall(address imp, bytes memory wat)
+        external
+        payable
+        override
+    {
+        _authorizeUpgrade(imp);
+        _upgradeToAndCallUUPS(imp, wat, true);
+    }
+```
+
 [Test File](test/wallet-mining/wallet-mining.challenge.js)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Puppet V3
