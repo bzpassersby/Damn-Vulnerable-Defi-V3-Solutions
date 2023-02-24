@@ -206,7 +206,7 @@ Starting with a flash loan pool and a governance contract that manage the pool, 
 
 Similar to the rewarder challenge, `ERC20 Snapshot` is used for the token and not properly implemented.
 
-(1) It allows anyone to take a snapshot, which depending on how snapshot id is accessed to enforce restrictions later on may be an issue.
+(1) It allows anyone to take a snapshot, which depending on how snapshot id is accessed to enforce restrictions later is a red flag.
 
 (2) No additional book keeping of snapshot id is enforced in governance contract. When approving an action, the governance contract would take the last snapshot to check balances and determine eligibility.
 
@@ -249,5 +249,214 @@ The text string could be encoded in Base64, which is a common binary to text enc
 We can verify that these are private keys to the trusted accounts of the oracle. The attack is to use the private keys to sign transactions to manipulate prices in the oracle, which allow us to buy low and sell high to drain the exchange.
 
 [Test File](test/compromised/compromised.challenge.js)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Puppet
+
+The challenge is to drain all the tokens from the lender pool in a single transaction.
+
+The main vulnerability is Uniswap pool V1 is prone to price manipulation when liquidity is low.
+
+Uniswap pool V1 uses spot price to determine token prices in the pool by assess the ratio of the paired tokens at a given time.
+
+We can achieve the attack by dumping large amount of token in uniswap liquidity pool to deflate the token value in the lender pool, this allow us to borrow all tokens from the pool with a low collateral.
+
+Finally, we need to deploy our attacker contract to swap token and borrow tokens in a single transaction. Note that our attacker contract has to be deployed with additional ether. This is to avoid us supplying ether to attacker contract in a separate transaction.
+
+[Test File](test/puppet/puppet.challenge.js)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Puppet-v2
+
+The challenge is similar to Puppet. Instead we need to manipulate the oracle price pulled from Uniswap v2 liquidity pool.
+
+Uniswap v2 added improvements to prevent price oracle attacks. One is it measures prices at every beginning of a block, increasing the possibility for the attacker to lose money to arbitrageurs. Second, it introduces TWAP (time-weighted average price), which allows oracles to survey average price as a specific time intervals.
+
+The main vulnerability in the puppet lending pool is that the TWAP is not implemented, instead it directly query the spot price of the liquidity pool.
+
+[Test File](test/puppet-v2/puppet-v2.challenge.js)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Free Rider
+
+We are tasked to get the NFTs from a marketplace and send it to a designated recovery contract.
+
+The major error in the marketplace contract is the buy nft function `_buyOne` would send the sales to the new buyer instead of the original owner/seller.
+
+Another error is that when buying multiple NFTs at once through `_buyMany`, you only need to send Eth for a single NFT price.
+
+The attack would be get a flash loan from Uniswap to buy NFTs, and return it in a single transaction.
+
+[Test File](test/free-rider/free-rider.challenge.js)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Back Door
+
+Here we are tasked to deploy Gnosis wallet contract on behalf of 5 existing registered users in the WalletRegistry and take all the rewards that the registry sends to the user owned wallets.
+
+Specifically, the WalletRegistry contract has a call back function `proxyCreated` which is supposed to be called whenever a new wallet is create through Gnosis wallet factory using `createProxyWithCallback` function. And several checks are performed in the `proxyCreated` function to make sure the new wallet create are initialized in an intended safe manner, if so, WalletRegistry send token rewards to the wallet address.
+
+Several safe guards are checked in the `proxyCreated` function, including making sure `fallbackManager` address which allows wallet to send random transaction to the address is set to address(0).
+
+After reviewing the `initializer` data which was passed during wallet creation to initialize the wallet through invoking `setup` function on GnosisSafe.sol, we can see that of all the arguments passed to `setup`, only `address to`,`bytes calldata data`, `paymentToken`,`payment`,`paymentReceiver` can be customized while still passing the checks from the registry.
+
+````solidiy
+function setup(
+        address[] calldata _owners,
+        uint256 _threshold,
+        address to, //this arg is not checked by proxyCreated function
+        bytes calldata data, //this arg is not checked by proxyCreated function
+        address fallbackHandler,
+        address paymentToken, //this arg is not checked by proxyCreated function
+        uint256 payment, //this arg is not checked by proxyCreated function
+        address payable paymentReceiver //this arg is not checked by proxyCreated function
+    ) external {
+        // setupOwners checks if the Threshold is already set, therefore preventing that this method is called twice
+        setupOwners(_owners, _threshold);
+        if (fallbackHandler != address(0)) internalSetFallbackHandler(fallbackHandler);
+        // As setupOwners can only be called if the contract has not been initialized we don't need a check for setupModules
+        setupModules(to, data);
+
+        if (payment > 0) {
+            // To avoid running into issues with EIP-170 we reuse the handlePayment function (to avoid adjusting code of that has been verified we do not adjust the method itself)
+            // baseGas = 0, gasPrice = 1 and gas = payment => amount = (payment + 0) * 1 = payment
+            handlePayment(payment, 0, 1, paymentToken, paymentReceiver);
+        }
+        emit SafeSetup(msg.sender, _owners, _threshold, to, fallbackHandler);
+    }
+    ```
+````
+
+Note that even though we are free to set the `paymentReceiver` and `payment` argument to directly send token to us at initialization, the wallet has not received token rewards at this point to send.
+
+Of the customizable arguments, only `address to` and `bytes calldata data` seem helpful since they allow us to invoke `setupModules(to,data)`. From within `setupModules` function we are free to call a `delegatecall` function on behalf of the wallet, which will allow us to change states of this wallet.
+
+```solidity
+function setupModules(address to, bytes memory data) internal {
+        require(modules[SENTINEL_MODULES] == address(0), "GS100");
+        modules[SENTINEL_MODULES] = SENTINEL_MODULES;
+        if (to != address(0))
+            // Setup has to complete successfully or transaction fails.
+            require(execute(to, 0, data, Enum.Operation.DelegateCall, gasleft()), "GS000");
+    }
+```
+
+**Now we see a major vulnerability of the wallet contract to allow us modify its state through `delegatecall` within `setupModules`.This allows a malicious logic contract to modify the wallet proxy.**
+
+In order to exploit this, our malicious logic contract(FakeMaster.sol) modifies the state of `mapping(address => address) internal modules` to whitelist an attacker contract(BackDoor.sol) as trusted module. We carry out the attack with `execTransactionFromModule` function to make any call we want to steal the tokens after wallet initialization. Note that we can also whitelist an EOA as a module instead of a contract.
+
+[Test File](test/backdoor/backdoor.challenge.js)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Climber
+
+The challenge is to drain the funds in the vault administered by a Timelock contract. And the vault itself is UUPS upgradable.
+
+There are two main vulnerabilities in the Timelock contract.
+
+(1) The `execute` function allows anyone to call, which when properly safe guarded is fine. But it allows a random low level `call` to be executed prior to verify if the operation has been approved.
+
+(2) The Timelock contract itself is self-administered as well, which is not a red flag but when combined with the first vulnerability allows an attacker to execute administrative actions through 'call' before the operation is verified.
+
+In order to exploit, we need to `execute` a series of administrative actions by calling back to timelock itself. First, to set the delayed execution to zero. Second, grant ourself the 'PROPOSER' role. Third, schedule the first and second step through `schedule` function.
+
+However, one caveat is that when passing bytes data to `schedule` the operation, we need to avoid a self-referencing loop, because the data would include the `schedule` function itself. To avoid this, we can do the first and second step through EOA and invoke an attacker contract to `schedule` the operations.
+
+After our attacker contract(ClimberAttack.sol) reset the delay and got the proposal role, we can transfer ownership and upgrade the vault logic contract to a malicious logic contract (FakeVault.sol) to sweep the funds.
+
+[Test File](test/climber/climber.challenge.js)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Wallet-Mining
+
+There are several small challenges combined. We are tasked to drain all funds from a wallet deployer contract which only issues rewards to specific users with pre-calculated wallet address registered in an authorizer contract. The authorizer contract is upgradable. On the other hand, we need to deploy contracts to three empty addresses, two of the addresses are referenced in the wallet deployer contract. The third address has funds that we need to recover.
+
+There are two aspects in solving the challenge. First is to figure out how to deploy contracts to predetermined address, finishing this would easily allow us to recover the funds in the empty address. Second is to drain the funds from wallet deployer contract.
+
+### 1- Empty addresses
+
+From the context, we know `0x76E2cFc1F5Fa8F6a5b3fC4c8F4788F0116861F9B` is the Gnosis safe factory which supposed to deploy the empty wallet address `0x9b6fb606a9f5789444c17768c6dfcf2f83563801`. From `GnosisSafeProxyFactory.sol`, we know there are two ways to create proxy wallet and only `createProxy` function allow us to create a proxy wallet with only the address of the factory itself and a nonce, without a random `salt` input.
+
+We can first brute force it with an incrementing nonce and `0x76E2cFc1F5Fa8F6a5b3fC4c8F4788F0116861F9B` as deployer address to find the empty wallet address `0x9b6fb606a9f5789444c17768c6dfcf2f83563801`. This should give us required deployment nonce.
+
+To find the deployment method for the factory address and master copy address, an etherscan search reveals the exact same addresses and their deployment EOA account `0x1aa7451DD11b8cb16AC089ED7fE05eFa00100A6A`. Without the private key to this EOA account, it seems we cannot replicate its deployments. I did a research and found out the exact attack against this EOA account toke place last year.
+Credit to #Coucou who wrote the attack analysis [here](https://mirror.xyz/0xbuidlerdao.eth/lOE5VN-BHI0olGOXe27F0auviIuoSlnou_9t3XRJseY). We can use the exact signed transaction data used for initial deployment. The attacker was able to replay the development of initial contract on optimism L2 chain. This should be the same strategy for our challenge.
+
+Note that in my test file, I didn't write out the full code to replay this attack.
+
+### 2- Drain wallet deployer contract
+
+There are two vulnerabilities on the wallet deployer contract.The `drop` function would only return but not revert the transaction if invalid wallets are passed through the nested `can` function. This would allow any state changes made by `aim = fact.createProxy(copy, wat)` to persist. However, this would still not allow us to drain the funds.
+
+```solidity
+    function drop(bytes memory wat) external returns (address aim) {
+        aim = fact.createProxy(copy, wat);
+        if (mom != address(0) && !can(msg.sender, aim)) {
+            revert Boom();
+        }
+        IERC20(gem).transfer(msg.sender, pay);
+    }
+
+```
+
+Another potential point of exploit in the wallet deployer contract is `can` function only checks whether the return data from the `staticcall` is zero. If we can modify the logic of the authorizer to make it return any other value. The `can` function would return true, allowing `drop`function to send tokens.
+
+```solidity
+    function can(address u, address a) public view returns (bool) {
+        assembly {
+            let m := sload(0)
+            if iszero(extcodesize(m)) {
+                return(0, 0)
+            }
+            let p := mload(0x40)
+            mstore(0x40, add(p, 0x44))
+            mstore(p, shl(0xe0, 0x4538c4eb))
+            mstore(add(p, 0x04), u)
+            mstore(add(p, 0x24), a)
+            if iszero(staticcall(gas(), m, p, 0x44, p, 0x20)) {
+                return(0, 0)
+            }
+            if and(not(iszero(returndatasize())), iszero(mload(p))) {
+                return(0, 0)
+            }
+        }
+        return true;
+    }
+```
+
+**There two major vulnerabilities in the upgradable authorizer contract. And these would help us solve the challenge.**
+
+(1) The initializer function was only initialized in the proxy context but not on the logic contract context. This would allow anyone to modify the state of the logic contract, given other vulnerabilities line up.
+
+```solidity
+    function init(address[] memory _wards, address[] memory _aims)
+        external
+        initializer
+    {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+
+        for (uint256 i = 0; i < _wards.length; ) {
+            _rely(_wards[i], _aims[i]);
+            unchecked {
+                i++;
+            }
+        }
+    }
+```
+
+(2) The logic contract inherit `upgradeToAndCall` function, even restricted to owner, but if owner was compromised, it makes a `delegatecall` under the hood to the new logic contract. This is a red flag that would allow anyone who gains control of the logic contract to change its state.
+
+In order to exploit, we need to first initialize the logic contract to claim ownership. Second, we need to upgrade it to a malicious logic contract and call `selfdestruct`. Now we can empty the authorizer logic contract attached to its proxy.
+
+If we execute our attack as above, we should be able to pass the `drop` function to receive tokens.
+
+[Test File](test/wallet-mining/wallet-mining.challenge.js)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
