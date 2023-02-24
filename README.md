@@ -41,21 +41,21 @@ Most challenges requires attacker contracts in the contracts folder and the exec
       <a href="#unstoppable">Unstoppable</a>
     </li>
     <li>
-      <a href="#naive receiver">Naive receiver</a>
+      <a href="#naive-receiver">Naive receiver</a>
     </li>
     <li><a href="#truster">Truster</a></li>
-    <li><a href="#side entrance">Side Entrance</a></li>
-    <li><a href="#the rewarder">The Rewarder</a></li>
+    <li><a href="#side-entrance">Side Entrance</a></li>
+    <li><a href="#the-rewarder">The Rewarder</a></li>
     <li><a href="#selfie">Selfie</a></li>
     <li><a href="#compromised">Compromised</a></li>
     <li><a href="#puppet">Puppet</a></li>
-    <li><a href="#puppet v2">Puppet V2</a></li>
-    <li><a href="#free rider">Free Rider</a></li>
+    <li><a href="#puppet-v2">Puppet V2</a></li>
+    <li><a href="#free-rider">Free Rider</a></li>
     <li><a href="#backdoor">Backdoor</a></li>
     <li><a href="#climber">Climber</a></li>
-    <li><a href="#wallet mining">Wallet Mining</a></li>
-    <li><a href="#puppet v3">Puppet V3</a></li>
-    <li><a href="#abi smuggling">ABI Smuggling</a></li>
+    <li><a href="#wallet-mining">Wallet Mining</a></li>
+    <li><a href="#puppet-v3">Puppet V3</a></li>
+    <li><a href="#abi-smuggling">ABI Smuggling</a></li>
   </ol>
 </details>
 
@@ -315,10 +315,9 @@ function setup(
         uint256 payment, //this arg is not checked by proxyCreated function
         address payable paymentReceiver //this arg is not checked by proxyCreated function
     ) external {
-        // setupOwners checks if the Threshold is already set, therefore preventing that this method is called twice
         setupOwners(_owners, _threshold);
         if (fallbackHandler != address(0)) internalSetFallbackHandler(fallbackHandler);
-        // As setupOwners can only be called if the contract has not been initialized we don't need a check for setupModules
+
         setupModules(to, data);
 
         if (payment > 0) {
