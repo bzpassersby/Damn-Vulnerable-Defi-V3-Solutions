@@ -60,6 +60,7 @@ describe("[Challenge] Backdoor", function () {
       newWallets = [];
     const Backdoor = await ethers.getContractFactory("BackDoor");
     const backdoor = await Backdoor.deploy(token.address, player.address);
+
     const FakeMaster = await ethers.getContractFactory("FakeMaster");
     const fakeMaster = await FakeMaster.deploy();
     //Create proxies and register wallets through createProxyWithCallback();

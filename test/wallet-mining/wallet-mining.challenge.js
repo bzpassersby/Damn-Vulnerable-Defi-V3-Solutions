@@ -110,12 +110,18 @@ describe("[Challenge] Wallet mining", function () {
       }
     }
     /** Step 2: Deploy factory, master copy and deposit wallet contracts on target wallet based on nonce calculated from previous step */
-    const signer = await ethers.getImpersonatedSigner(
+    const mockSigner = await ethers.getImpersonatedSigner(
       "0x1aa7451DD11b8cb16AC089ED7fE05eFa00100A6A"
     );
-    await heplers.setBalance(signer.address, ethers.utils.parseEther("100"));
+    await heplers.setBalance(
+      mockSigner.address,
+      ethers.utils.parseEther("100")
+    );
 
-    const MockFactory = await ethers.getContractFactory("MockFactory", signer);
+    const MockFactory = await ethers.getContractFactory(
+      "MockFactory",
+      mockSigner
+    );
 
     let mockFactory, mockCopy;
 
@@ -129,6 +135,7 @@ describe("[Challenge] Wallet mining", function () {
       } else if (
         _mockFactory.address == "0x34CfAC646f301356fAa8B21e94227e3583Fe3F5F"
       ) {
+        console.log(_mockFactory);
         mockCopy = _mockFactory;
         console.log("mockCopy deployed at", mockCopy.address);
       }

@@ -107,12 +107,14 @@ describe("[Challenge] The rewarder", function () {
       player.address
     );
     await ethers.provider.send("evm_increaseTime", [6 * 24 * 60 * 60]);
+    await liquidityToken.approve(rewarderPool.address, 1n * 10n * 17n);
+
     await attacker.getLoan();
   });
 
   after(async function () {
     /** SUCCESS CONDITIONS - NO NEED TO CHANGE ANYTHING HERE */
-    // Only one round must have taken place
+    // // Only one round must have taken place
     expect(await rewarderPool.roundNumber()).to.be.eq(3);
 
     // Users should get neglegible rewards this round
