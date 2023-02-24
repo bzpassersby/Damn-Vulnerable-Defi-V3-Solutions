@@ -373,7 +373,7 @@ After our attacker contract(ClimberAttack.sol) reset the delay and got the propo
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Wallet-Mining
+## Wallet Mining
 
 There are several small challenges combined. We are tasked to drain all funds from a wallet deployer contract which only issues rewards to specific users with pre-calculated wallet address registered in an authorizer contract. The authorizer contract is upgradable. On the other hand, we need to deploy contracts to three empty addresses, two of the addresses are referenced in the wallet deployer contract. The third address has funds that we need to recover.
 
