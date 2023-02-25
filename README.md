@@ -470,4 +470,49 @@ If we execute our attack as above, we should be able to pass the `drop` function
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Puppet V3
+## 14-Puppet V3
+
+This challenge asks us to drain all the DVT tokens from the lending pool, which take price oracles from Uniswap v3 liquidity pool.
+
+Uniswap v3 introduced TWAP (time weight average price) based on geometric mean of spot prices, as opposed to arithmetic mean used for Uniswap v2. The change in price calculation greatly increases capital efficiency, as well as improved resistance against oracle manipulation.
+
+We can see that the lending pool set a time interval of 10 min for price oracle, which should be long enough to prevent price manipulation in reality for a decent sized pool. But in our case, we start with more DVT tokens compared to uniswap pool, which gives us an advantage. To carry out the attack, we need to swap multiple times with uniswap pool with time increments between each swap to tip the price to our favor. We also need to make sure the total time increments are less than 156 seconds as specified by the test.
+
+To maximize price impact, I swap the maximum allowable amount of DVT token (100 ether) in the first swap and continue to swap 1 ether DVT token per swap afterwards. The desirable price is reached within total of 7 swaps. After receiving enough Eth as collateral, we would simply drain the lending pool. Note that we can reduce the rounds of swap if we increase the time interval between swaps.
+
+[Test File](test/wallet-mining/wallet-mining.challenge.js)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## 15-ABI Smuggling
+
+The challenge asks us to drain all tokens in the vault contract. The vault token also inherits an authorization contract which only allows registered account to execute specific functions.
+
+An important feature of the vault contract is that its `withdraw` and `sweepFunds` function are self-authorized, and can only be called by `execute` function which enforces that only callers and actions with permission can invoke the function.
+
+The vulnerability lies in the way the function selector is verified in `execute`. The function selector is pulled from `msg.data` at a fixed calldata byte offset `uint256 calldataOffset = 4 + 32 * 3`, which means that as long as we have the correct function selector in the calldata at this offset, we have a chance to pass.
+
+Even though accessing calldata at a fixed offset is commonly done, in our case, the arguments contains `bytes call actionData` which is a dynamic data type that stores the location of the data first. The actual data which contains the length of data and data content starts at the specified store location. This `msg.data` structure allows us to put authorized function selector `withdraw` at offset ('4+32x3') first and sneak in `sweepFunds` function selector and its arguments after.
+
+```solidity
+    function execute(address target, bytes calldata actionData) external nonReentrant returns (bytes memory) {
+        // Read the 4-bytes selector at the beginning of `actionData`
+        bytes4 selector;
+        uint256 calldataOffset = 4 + 32 * 3; // calldata position where `actionData` begins
+        assembly {
+            selector := calldataload(calldataOffset)
+        }
+
+        if (!permissions[getActionId(selector, msg.sender, target)]) {
+            revert NotAllowed();
+        }
+
+        _beforeFunctionCall(target, actionData);
+
+        return target.functionCall(actionData);
+    }
+```
+
+[Test File](test/abi-smuggling/abi-smuggling.challenge.js)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
