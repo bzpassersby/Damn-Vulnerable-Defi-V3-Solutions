@@ -384,7 +384,7 @@ From the context, we know `0x76E2cFc1F5Fa8F6a5b3fC4c8F4788F0116861F9B` is the Gn
 We can first brute force it with an incrementing nonce and `0x76E2cFc1F5Fa8F6a5b3fC4c8F4788F0116861F9B` as deployer address to find the empty wallet address `0x9b6fb606a9f5789444c17768c6dfcf2f83563801`. This should give us required deployment nonce.
 
 To find the deployment method for the factory address and master copy address, an etherscan search reveals the exact same addresses and their deployment EOA account `0x1aa7451DD11b8cb16AC089ED7fE05eFa00100A6A`. Without the private key to this EOA account, it seems we cannot replicate its deployments. I did a research and found out the exact attack against this EOA account toke place last year.
-Credit to #Coucou who wrote the attack analysis [here](https://mirror.xyz/0xbuidlerdao.eth/lOE5VN-BHI0olGOXe27F0auviIuoSlnou_9t3XRJseY). We can use the exact signed raw transaction data used for initial deployment. The attacker was able to replay the development of initial contract on optimism L2 chain. This should be the same strategy for our challenge.
+Credit to #Coucou who wrote the attack analysis [here](https://mirror.xyz/0xbuidlerdao.eth/lOE5VN-BHI0olGOXe27F0auviIuoSlnou_9t3XRJseY). See etherscan for signed transaction data of factory deployment [here](https://etherscan.io/getRawTx?tx=0x06d2fa464546e99d2147e1fc997ddb624cec9c8c5e25a050cc381ee8a384eed3). We can use the exact signed raw transaction data used for initial deployment. The attacker was able to replay the development of initial contract on optimism L2 chain. This should be the same strategy for our challenge.
 
 See test file for details.
 
