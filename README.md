@@ -293,7 +293,7 @@ The attack would be get a flash loan from Uniswap to buy NFTs, and return it in 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## 11-Back Door
+## 11-Backdoor
 
 Here we are tasked to deploy Gnosis wallet contract on behalf of 5 existing registered users in the WalletRegistry and take all the rewards that the registry sends to the user owned wallets.
 
@@ -476,9 +476,9 @@ This challenge asks us to drain all the DVT tokens from the lending pool, which 
 
 Uniswap v3 introduced TWAP (time weight average price) based on geometric mean of spot prices, as opposed to arithmetic mean used for Uniswap v2. The change in price calculation greatly increases capital efficiency, as well as improved resistance against oracle manipulation.
 
-We can see that the lending pool set a time interval of 10 min for price oracle, which should be long enough to prevent price manipulation in reality for a decent sized pool. But in our case, we start with more DVT tokens compared to uniswap pool, which gives us an advantage. To carry out the attack, we need to swap multiple times with uniswap pool with time increments between each swap to tip the price to our favor. We also need to make sure the total time increments are less than 156 seconds as specified by the test.
+We can see that the lending pool set a time interval of 10 min for price oracle, which should be long enough to prevent price manipulation in reality for a decent sized pool. But in our case, we start with more DVT tokens compared to uniswap pool, which gives us an advantage. To carry out the attack, we need to swap maximum amount of tokens with uniswap pool with sufficient time increments to tip the price to our favor. We also need to make sure the total time increments are less than 156 seconds as specified by the test.
 
-To maximize price impact, I swap the maximum allowable amount of DVT token (100 ether) in the first swap and continue to swap 1 ether DVT token per swap afterwards. The desirable price is reached within total of 7 swaps. After receiving enough Eth as collateral, we would simply drain the lending pool. Note that we can reduce the rounds of swap if we increase the time interval between swaps.
+To maximize price impact, I swap the maximum allowable amount of DVT token (110 ether) in the swap and then increase the time by 100s. The desirable price is reached after one block has passed and with 100s time increments. After receiving enough Eth as collateral, we would simply drain the lending pool.
 
 [Test File](test/wallet-mining/wallet-mining.challenge.js)
 
