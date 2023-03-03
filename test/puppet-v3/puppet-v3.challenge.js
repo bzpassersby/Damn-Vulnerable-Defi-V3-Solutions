@@ -8,6 +8,7 @@ const {
 const positionManagerJson = require("@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json");
 const factoryJson = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json");
 const poolJson = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
+require("dotenv").config();
 
 // See https://github.com/Uniswap/v3-periphery/blob/5bcdd9f67f9394f3159dad80d0dd01d37ca08c66/test/shared/encodePriceSqrt.ts
 const bn = require("bignumber.js");
@@ -34,8 +35,7 @@ describe("[Challenge] Puppet v3", function () {
   let initialBlockTimestamp;
 
   /** SET RPC URL HERE */
-  const MAINNET_FORKING_URL =
-    "https://eth-mainnet.g.alchemy.com/v2/y8aokhML52A8PH4-mIh2Rlfwb17ar0Lc";
+  const MAINNET_FORKING_URL = process.env.MAINNET_FORKING_URL;
 
   // Initial liquidity amounts for Uniswap v3 pool
   const UNISWAP_INITIAL_TOKEN_LIQUIDITY = 100n * 10n ** 18n;
