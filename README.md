@@ -480,6 +480,9 @@ We can see that the lending pool set a time interval of 10 min for price oracle,
 
 To maximize price impact, I swap the maximum allowable amount of DVT token (110 ether) in the swap and then increase the time by 100s. The desirable price is reached after one block has passed and with 100s time increments. After receiving enough Eth as collateral, we would simply drain the lending pool.
 
+Note to run the test file, insert your own json rpc url to fork mainnet in the test preparation section.
+`  const MAINNET_FORKING_URL = process.env.MAINNET_FORKING_URL;`
+
 [Test File](test/wallet-mining/wallet-mining.challenge.js)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
